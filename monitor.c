@@ -28,9 +28,11 @@ void handle_sigusr1(int sig)
     got_command = 1;
 }
 
+int out_fd = STDOUT_FILENO;
+
 void list_hunts()
 {
-    printf("[monitor] Comanda: list_hunts\n");
+    dprintf(out_fd, "[monitor] Comanda: list_hunts\n");
 
     system("ls -d */ 2>/dev/null | while read dir; do "
            "if [ -f \"$dir/treasures.dat\" ]; then "
@@ -46,19 +48,19 @@ void list_treasures_cmd(const char *hunt_id)
     FILE *f = fopen(path, "rb");
     if (!f)
     {
-        printf("[monitor] Nu pot deschide: %s\n", path);
+        dprintf(out_fd,"[monitor] Nu pot deschide: %s\n", path);
         return;
     }
 
-    printf("[monitor] Comorile din %s:\n", hunt_id);
+    dprintf(out_fd,"[monitor] Comorile din %s:\n", hunt_id);
 
     treasure t;
     while (fread(&t, sizeof(treasure), 1, f) == 1)
     {
-        printf("ID: %d | User: %s | GPS: %.2f, %.2f | Valoare: %d\n",
+        dprintf(out_fd,"ID: %d | User: %s | GPS: %.2f, %.2f | Valoare: %d\n",
                t.ID, t.username, t.gps.x, t.gps.y, t.val);
-        printf("Clue: %s\n", t.clue);
-        printf("-----------------------------\n");
+        dprintf(out_fd,"Clue: %s\n", t.clue);
+        dprintf(out_fd,"-----------------------------\n");
     }
 
     fclose(f);
@@ -72,7 +74,7 @@ void view_treasure_cmd(const char *hunt_id, int target_id)
     FILE *f = fopen(path, "rb");
     if (!f) 
     {
-        printf("[monitor] Nu pot deschide: %s\n", path);
+        dprintf(out_fd,"[monitor] Nu pot deschide: %s\n", path);
         return;
     }
 
@@ -82,17 +84,17 @@ void view_treasure_cmd(const char *hunt_id, int target_id)
     {
         if (t.ID == target_id) 
         {
-            printf("[monitor] Comoara gasita in %s:\n", hunt_id);
-            printf("ID: %d | User: %s | GPS: %.2f, %.2f | Valoare: %d\n",
+            dprintf(out_fd,"[monitor] Comoara gasita in %s:\n", hunt_id);
+            dprintf(out_fd,"ID: %d | User: %s | GPS: %.2f, %.2f | Valoare: %d\n",
                    t.ID, t.username, t.gps.x, t.gps.y, t.val);
-            printf("Clue: %s\n", t.clue);
+            dprintf(out_fd,"Clue: %s\n", t.clue);
             found = 1;
             break;
         }
     }
 
     if (!found) 
-        printf("[monitor] Comoara %d nu a fost gasita in %s.\n", target_id, hunt_id);
+        dprintf(out_fd,"[monitor] Comoara %d nu a fost gasita in %s.\n", target_id, hunt_id);
 
     fclose(f);
 }
@@ -142,7 +144,7 @@ void run_monitor()
                     } 
                     else 
                     {
-                        printf("[monitor] Sintaxa gresita pentru list_treasures\n");
+                        dprintf(out_fd, "[monitor] Sintaxa gresita pentru list_treasures\n");
                     }
                 } 
                 else if (strncmp(cmd, "view_treasure", 13) == 0) 
@@ -155,17 +157,17 @@ void run_monitor()
                     }
                     else 
                     {
-                        printf("[monitor] Sintaxa gresita pentru view_treasure\n");
+                        dprintf(out_fd, "[monitor] Sintaxa gresita pentru view_treasure\n");
                     }
                 }
                 else if (strcmp(cmd, "stop_monitor") == 0) 
                 {
-                    printf("[monitor] Stop primit. Oprire in curs...\n");
+                    dprintf(out_fd, "[monitor] Stop primit. Oprire in curs...\n");
                     stop_requested = 1;
                 }
                 else 
                 {
-                    printf("[monitor] Comanda necunoscuta: %s\n", cmd);
+                    dprintf(out_fd, "[monitor] Comanda necunoscuta: %s\n", cmd);
                 }
             }
             fclose(f);
@@ -174,7 +176,7 @@ void run_monitor()
         if (stop_requested) 
         {
             usleep(5000000); //5 secunde intarziere
-            printf("[monitor] Monitor inchis.\n");
+            dprintf(out_fd, "[monitor] Monitor inchis.\n");
             exit(0);
         }
 
@@ -184,8 +186,11 @@ void run_monitor()
 }
 
 
-int main()
+int main(int argc, char *argv[])
 {
+    if (argc > 1)
+        out_fd = atoi(argv[1]); //pipe de scriere primit de la treasure_hub
+
     run_monitor();
     return 0;
 }
